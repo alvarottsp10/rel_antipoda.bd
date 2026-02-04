@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+
+<html lang="pt">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Folha de Controlo de Obra - Relógio</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+
+    <div id="inactivityModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>⚠️ Inatividade Detectada</h2>
+
+            <p>Não detectámos actividade há <strong id="inactivityTime">5 minutos</strong>.</p>
+
+            <p>O timer foi <strong>pausado automaticamente</strong> para garantir precisão no registo de horas.</p>
+
+            <div class="info-panel">
+
+                <strong>Tempo pausado:</strong> <span id="pausedDuration">0m 0s</span>
+
+            </div>
+
+            <p style="font-size: 14px; color: #6c757d; margin-top: 15px;">Deseja retomar o trabalho?</p>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="resumeTimer()">✓ Retomar</button>
+
+                <button class="btn btn-danger" onclick="stopWorkFromInactivity()">✗ Parar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="confirmModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2 id="confirmTitle">Confirmar</h2>
+
+            <div class="confirm-dialog">
+
+                <p id="confirmMessage"></p>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" id="confirmYes">Sim</button>
+
+                <button class="btn btn-secondary" id="confirmNo">Não</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="alertModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2 id="alertTitle">Aviso</h2>
+
+            <div class="confirm-dialog">
+
+                <p id="alertMessage"></p>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-primary" id="alertOk">OK</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="newProjectModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>🆕 Abrir Nova Obra</h2>
+
+            <div id="newProjectError" class="error-message hidden"></div>
+
+            <div id="newProjectSuccess" class="success-message hidden"></div>
+
+            <div class="form-group">
+
+                <label>Código da Obra *</label>
+
+                <input type="text" id="newProjectCode" placeholder="Ex: 1234\5678 90 123 - 4567">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Nome da Obra *</label>
+
+                <input type="text" id="newProjectName" placeholder="Ex: Instalação Sistema AVAC - Empresa XYZ">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Observações (opcional)</label>
+
+                <textarea id="newProjectNotes" placeholder="Informações adicionais sobre a obra..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="createNewProject()">✓ Criar Obra</button>
+
+                <button class="btn btn-secondary" onclick="closeNewProjectModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="reopenProjectModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>🔄 Reabrir Obra</h2>
+
+            <div id="reopenProjectError" class="error-message hidden"></div>
+
+            <div class="info-panel" style="margin-bottom: 20px;">
+
+                <div class="info-item">
+
+                    <span class="label">Código:</span>
+
+                    <span class="value" id="reopenProjectCode">-</span>
+
+                </div>
+
+                <div class="info-item">
+
+                    <span class="label">Nome:</span>
+
+                    <span class="value" id="reopenProjectName">-</span>
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Motivo da Reabertura *</label>
+
+                <select id="reopenReason">
+
+                    <option value="">Selecione o motivo</option>
+
+                    <option value="client_change">Alteração do Cliente</option>
+
+                    <option value="our_error">Erro Nosso</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Comentário (opcional)</label>
+
+                <textarea id="reopenComment" placeholder="Descreva o motivo da reabertura..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-warning" onclick="confirmReopenProject()">🔄 Reabrir Obra</button>
+
+                <button class="btn btn-secondary" onclick="closeReopenProjectModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="editModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>✏️ Editar Sessão</h2>
+
+            <div id="editError" class="error-message hidden"></div>
+
+            <div id="editSuccess" class="success-message hidden"></div>
+
+            <div class="radio-group">
+
+                <div class="radio-option">
+
+                    <input type="radio" id="editWorkTypeProject" name="editWorkType" value="project" checked onchange="updateEditFields()">
+
+                    <label for="editWorkTypeProject" class="radio-label">🏢 Trabalho de Projeto</label>
+
+                </div>
+
+                <div class="radio-option internal">
+
+                    <input type="radio" id="editWorkTypeInternal" name="editWorkType" value="internal" onchange="updateEditFields()">
+
+                    <label for="editWorkTypeInternal" class="radio-label">🏠 Trabalho Interno</label>
+
+                </div>
+
+            </div>
+
+            <div id="editProjectFields">
+
+                <div class="form-group">
+
+                    <label>Selecione a Obra</label>
+
+                    <select id="editProjectSelect" onchange="updateEditProjectInfo()">
+
+                        <option value="">-- Selecione uma obra --</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Departamento / Tipo de Projeto</label>
+
+                    <select id="editProjectType" onchange="updateEditSubcategories()">
+
+                        <option value="">Selecione o departamento</option>
+
+                        <option value="projeto">Projeto</option>
+
+                        <option value="eletrico">Elétrico</option>
+
+                        <option value="desenvolvimento">Desenvolvimento</option>
+
+                        <option value="orcamentacao">Orçamentação</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group" id="editSubcategoryGroup" style="display: none;">
+
+                    <label>Subcategoria</label>
+
+                    <select id="editSubcategory">
+
+                        <option value="">Selecione a subcategoria</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div id="editInternalFields" class="hidden">
+
+                <div class="form-group">
+
+                    <label>Categoria de Trabalho Interno</label>
+
+                    <select id="editInternalCategory" onchange="updateEditMeetingProjects()">
+
+                        <option value="reuniao">Reunião</option>
+
+                        <option value="formacao">Formação</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group" id="editMeetingProjectsGroup" style="display: none;">
+
+                    <label>Obras Relacionadas (opcional)</label>
+
+                    <div id="editMeetingProjectsList" class="checkbox-group"></div>
+
+                    <div class="projects-count" id="editMeetingProjectsCount">0 obras selecionadas</div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Descrição</label>
+
+                    <input type="text" id="editInternalDescription" placeholder="Ex: Reunião semanal de equipa">
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Data e Hora Início</label>
+
+                <input type="datetime-local" id="editStartTime">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Data e Hora Fim</label>
+
+                <input type="datetime-local" id="editEndTime">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Comentário (opcional)</label>
+
+                <textarea id="editComment" placeholder="Adicione observações..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="saveEdit()">💾 Guardar</button>
+
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="manualEntryModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>➕ Adicionar Sessão Manual</h2>
+
+            <div id="manualError" class="error-message hidden"></div>
+
+            <div id="manualSuccess" class="success-message hidden"></div>
+
+            <div class="radio-group">
+
+                <div class="radio-option">
+
+                    <input type="radio" id="manualWorkTypeProject" name="manualWorkType" value="project" checked onchange="updateManualFields()">
+
+                    <label for="manualWorkTypeProject" class="radio-label">🏢 Trabalho de Projeto</label>
+
+                </div>
+
+                <div class="radio-option internal">
+
+                    <input type="radio" id="manualWorkTypeInternal" name="manualWorkType" value="internal" onchange="updateManualFields()">
+
+                    <label for="manualWorkTypeInternal" class="radio-label">🏠 Trabalho Interno</label>
+
+                </div>
+
+            </div>
+
+            <div id="manualProjectFields">
+
+                <div class="form-group">
+
+                    <label>Selecione a Obra</label>
+
+                    <select id="manualProjectSelect" onchange="updateManualProjectInfo()">
+
+                        <option value="">-- Selecione uma obra --</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Departamento / Tipo de Projeto</label>
+
+                    <select id="manualProjectType" onchange="updateManualSubcategories()">
+
+                        <option value="">Selecione o departamento</option>
+
+                        <option value="projeto">Projeto</option>
+
+                        <option value="eletrico">Elétrico</option>
+
+                        <option value="desenvolvimento">Desenvolvimento</option>
+
+                        <option value="orcamentacao">Orçamentação</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group" id="manualSubcategoryGroup" style="display: none;">
+
+                    <label>Subcategoria</label>
+
+                    <select id="manualSubcategory">
+
+                        <option value="">Selecione a subcategoria</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div id="manualInternalFields" class="hidden">
+
+                <div class="form-group">
+
+                    <label>Categoria de Trabalho Interno</label>
+
+                    <select id="manualInternalCategory" onchange="updateManualMeetingProjects()">
+
+                        <option value="reuniao">Reunião</option>
+
+                        <option value="formacao">Formação</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group" id="manualMeetingProjectsGroup" style="display: none;">
+
+                    <label>Obras Relacionadas (opcional)</label>
+
+                    <div id="manualMeetingProjectsList" class="checkbox-group"></div>
+
+                    <div class="projects-count" id="manualMeetingProjectsCount">0 obras selecionadas</div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Descrição</label>
+
+                    <input type="text" id="manualInternalDescription" placeholder="Ex: Reunião semanal de equipa">
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Data e Hora Início</label>
+
+                <input type="datetime-local" id="manualStartTime">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Data e Hora Fim</label>
+
+                <input type="datetime-local" id="manualEndTime">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Comentário (opcional)</label>
+
+                <textarea id="manualComment" placeholder="Adicione observações..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="saveManualEntry()">💾 Adicionar</button>
+
+                <button class="btn btn-secondary" onclick="closeManualEntryModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="commentsModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>💬 Comentários</h2>
+
+            <div id="commentError" class="error-message hidden"></div>
+
+            <div id="commentSuccess" class="success-message hidden"></div>
+
+            <div class="info-panel" style="margin-bottom: 15px;">
+
+                <div class="info-item">
+
+                    <span class="label">Projeto:</span>
+
+                    <span class="value" id="commentProject">-</span>
+
+                </div>
+
+                <div class="info-item">
+
+                    <span class="label">Código:</span>
+
+                    <span class="value" id="commentWorkCode">-</span>
+
+                </div>
+
+            </div>
+
+            <div class="comment-list" id="commentsList"></div>
+
+            <div class="form-group">
+
+                <label>Novo Comentário</label>
+
+                <textarea id="newComment" placeholder="Escreva seu comentário..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-primary" onclick="addComment()">➕ Adicionar</button>
+
+                <button class="btn btn-secondary" onclick="closeCommentsModal()">Fechar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="dayModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2 id="modalDayDate">Data</h2>
+
+            <div id="modalDayContent"></div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-secondary" onclick="closeDayModal()">Fechar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="singleVacationModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>🏖️ Marcar Férias</h2>
+
+            <input type="hidden" id="singleVacationDate">
+
+            <div class="form-group">
+
+                <label>Observação (opcional)</label>
+
+                <textarea id="singleVacationNote" placeholder="Ex: Férias de Verão, Ponte, etc..."></textarea>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="confirmSingleVacation()">✓ Marcar</button>
+
+                <button class="btn btn-secondary" onclick="closeSingleVacationModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="singleAbsenceModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>❌ Marcar Falta</h2>
+
+            <div id="absenceError" class="error-message hidden"></div>
+
+            <input type="hidden" id="singleAbsenceDate">
+
+            <div class="form-group">
+
+                <label>Motivo da Falta *</label>
+
+                <textarea id="singleAbsenceNote" placeholder="Ex: Consulta médica, Assunto pessoal, etc..."></textarea>
+
+            </div>
+
+            <div class="info-panel" style="margin-top: 15px;">
+
+                <p style="font-size: 12px; color: #6c757d;">ℹ️ O motivo da falta é obrigatório para registo.</p>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-danger" onclick="confirmSingleAbsence()">✓ Marcar</button>
+
+                <button class="btn btn-secondary" onclick="closeSingleAbsenceModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="vacationPeriodModal" class="modal">
+
+        <div class="modal-content">
+
+            <h2>🏖️ Marcar Período de Férias</h2>
+
+            <div class="form-group">
+
+                <label>Data de Início</label>
+
+                <input type="date" id="vacationStartDate" onchange="updateVacationDaysCount()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Data de Fim</label>
+
+                <input type="date" id="vacationEndDate" onchange="updateVacationDaysCount()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label>Observação (opcional)</label>
+
+                <textarea id="vacationPeriodNote" placeholder="Ex: Férias de Verão"></textarea>
+
+            </div>
+
+            <div class="vacation-days-count">
+
+                <span style="color: #2e7d32;">📅</span>
+
+                <strong id="vacationDaysCount">0 dias</strong>
+
+                <div style="font-size: 11px; color: #6c757d; margin-top: 5px;">(apenas dias úteis, excluindo domingos e feriados)</div>
+
+            </div>
+
+            <div class="info-panel" style="margin-top: 15px;">
+
+                <p style="font-size: 12px; color: #6c757d;">ℹ️ Apenas dias úteis serão marcados. Domingos e feriados são automaticamente excluídos.</p>
+
+            </div>
+
+            <div class="modal-buttons">
+
+                <button class="btn btn-success" onclick="confirmVacationPeriod()">✓ Confirmar</button>
+
+                <button class="btn btn-secondary" onclick="closeVacationPeriodModal()">Cancelar</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="floatingTimer" class="floating-timer hidden">
+
+        <div class="float-time">00:00:00</div>
+
+        <div class="float-status">Parado</div>
+
+    </div>
+
+
+
+    <div class="container">
+
+        <div class="header" id="mainHeader">
+
+            <h1>⏱️ Controlo de Obra</h1>
+
+            <p>Sistema de Gestão de Horas de Trabalho</p>
+
+            <div id="adminBadge" class="admin-badge hidden">🛡️ ADMINISTRADOR</div>
+
+        </div>
+
+
+
+
+        <div id="loginScreen" class="content">
+
+            <div id="loginError" class="error-message hidden"></div>
+
+            <div class="form-group">
+
+                <label for="loginUsername">Utilizador</label>
+
+                <input type="text" id="loginUsername" placeholder="Nome de utilizador" onkeypress="if(event.key==='Enter')login()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="loginPassword">Password</label>
+
+                <input type="password" id="loginPassword" placeholder="Password" onkeypress="if(event.key==='Enter')login()">
+
+            </div>
+
+            <button class="btn btn-primary" onclick="login()">Entrar</button>
+
+            <button class="link-btn" onclick="showRegister()">Criar nova conta</button>
+
+        </div>
+
+
+
+        <div id="registerScreen" class="content hidden">
+
+            <div id="registerError" class="error-message hidden"></div>
+
+            <div id="registerSuccess" class="success-message hidden"></div>
+
+            <div class="form-group">
+
+                <label for="regFirstName">Primeiro Nome</label>
+
+                <input type="text" id="regFirstName" placeholder="Primeiro nome" onkeypress="if(event.key==='Enter')register()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="regLastName">Último Nome</label>
+
+                <input type="text" id="regLastName" placeholder="Último nome" onkeypress="if(event.key==='Enter')register()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="regDepartment">Departamento Padrão</label>
+
+                <select id="regDepartment">
+
+                    <option value="">Selecione seu departamento</option>
+
+                    <option value="projeto">Projeto</option>
+
+                    <option value="eletrico">Elétrico</option>
+
+                    <option value="desenvolvimento">Desenvolvimento</option>
+
+                    <option value="orcamentacao">Orçamentação</option>
+
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="regUsername">Nome de Utilizador</label>
+
+                <input type="text" id="regUsername" placeholder="Mínimo 3 caracteres" onkeypress="if(event.key==='Enter')register()">
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="regPassword">Password</label>
+
+                <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key==='Enter')register()">
+
+            </div>
+
+            <button class="btn btn-success" onclick="register()">Registar</button>
+
+            <button class="link-btn" onclick="showLogin()">Já tenho conta</button>
+
+        </div>
+
+
+
+
+        <div id="appScreen" class="content hidden">
+
+
+            <div class="tabs" id="mainTabs">
+
+                <button class="tab active" onclick="showMainTab(event, 'timer')">⏱️ Timer</button>
+
+                <button class="tab" onclick="showMainTab(event, 'dados')">📊 Dados</button>
+
+                <button class="tab" onclick="showMainTab(event, 'obras')">📋 Obras</button>
+
+                <button class="tab" onclick="showMainTab(event, 'calendario')">📅 Calendário</button>
+
+                <button class="tab admin-only-tab hidden" onclick="showMainTab(event, 'equipa')">👥 Equipa</button>
+
+                <button class="tab" onclick="showMainTab(event, 'profile')">👤 Perfil</button>
+
+            </div>
+
+
+            <div id="timerTab" class="tab-content active">
+
+                <div class="timer-display">
+
+                    <div class="time" id="currentTime">00:00:00</div>
+
+                    <div class="date" id="currentDate">Data</div>
+
+                </div>
+
+                
+
+                <div class="info-panel">
+
+                    <div class="info-item">
+
+                        <span class="label">Utilizador:</span>
+
+                        <span class="value" id="userName">-</span>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="radio-group">
+
+                    <div class="radio-option">
+
+                        <input type="radio" id="workTypeProject" name="workType" value="project" checked onchange="updateWorkTypeFields()">
+
+                        <label for="workTypeProject" class="radio-label">🏢 Trabalho de Projeto</label>
+
+                    </div>
+
+                    <div class="radio-option internal">
+
+                        <input type="radio" id="workTypeInternal" name="workType" value="internal" onchange="updateWorkTypeFields()">
+
+                        <label for="workTypeInternal" class="radio-label">🏠 Trabalho Interno</label>
+
+                    </div>
+
+                </div>
+
+
+
+                <div id="projectFields">
+
+                    <div class="form-group">
+
+                        <label for="projectSelect">Selecionar Obra</label>
+
+                        <select id="projectSelect" onchange="updateProjectInfo()">
+
+                            <option value="">-- Selecione uma obra aberta --</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="projectType">Departamento / Tipo de Projeto</label>
+
+                        <select id="projectType" onchange="updateSubcategories()">
+
+                            <option value="">Selecione o departamento</option>
+
+                            <option value="projeto">Projeto</option>
+
+                            <option value="eletrico">Elétrico</option>
+
+                            <option value="desenvolvimento">Desenvolvimento</option>
+
+                            <option value="orcamentacao">Orçamentação</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="form-group" id="subcategoryGroup" style="display: none;">
+
+                        <label for="subcategory">Subcategoria</label>
+
+                        <select id="subcategory">
+
+                            <option value="">Selecione a subcategoria</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+
+                <div id="internalFields" class="hidden">
+
+                    <div class="form-group">
+
+                        <label for="internalCategory">Categoria de Trabalho Interno</label>
+
+                        <select id="internalCategory" onchange="updateMeetingProjects()">
+
+                            <option value="reuniao">Reunião</option>
+
+                            <option value="formacao">Formação</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="form-group" id="meetingProjectsGroup" style="display: none;">
+
+                        <label>Obras Relacionadas (opcional)</label>
+
+                        <div id="meetingProjectsList" class="checkbox-group"></div>
+
+                        <div class="projects-count" id="meetingProjectsCount">0 obras selecionadas</div>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="internalDescription">Descrição</label>
+
+                        <input type="text" id="internalDescription" placeholder="Ex: Reunião semanal de equipa">
+
+                    </div>
+
+                </div>
+
+
+
+                <div id="timerError" class="error-message hidden"></div>
+
+
+
+                <div class="work-timer" id="workTimerDisplay">
+
+                    <div class="status" id="timerStatus">Parado</div>
+
+                    <div class="timer" id="workTimer">00:00:00</div>
+
+                    <div class="timer-controls">
+
+                        <button class="btn btn-success" id="startBtn" onclick="startWork()">Iniciar</button>
+
+                        <button class="btn btn-danger hidden" id="stopBtn" onclick="stopWork()">Parar</button>
+
+                    </div>
+
+                </div>
+
+
+
+                <button class="btn btn-warning btn-manual-add" onclick="openManualEntry()">➕ Adicionar Sessão Manual</button>
+
+            </div>
+
+
+
+            <div id="dadosTab" class="tab-content">
+                <h3 style="margin-bottom: 20px;">📊 Dados</h3>
+                <div class="dados-section">
+
+                    <h4 style="margin-bottom: 15px; color: var(--primary-color);">📅 Hoje</h4>
+
+                    
+
+
+                    <div class="stat-card-large">
+
+                        <div class="stat-value-large" id="todayTotalHours">0h 0m</div>
+
+                        <div class="stat-label-large">⏱️ Total Trabalhado</div>
+
+                    </div>
+
+                    
+
+
+                    <div class="stats-grid-two">
+
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+
+                            <div class="stat-value" style="color: var(--secondary-color);" id="todayProjectHours">0h 0m</div>
+
+                            <div class="stat-label">🏢 Projeto</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--internal-color);">
+
+                            <div class="stat-value" style="color: var(--internal-color);" id="todayInternalHours">0h 0m</div>
+
+                            <div class="stat-label">🏠 Interno</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+
+                <div class="dados-section">
+
+                    <h4 style="margin-bottom: 15px; color: var(--primary-color);">📊 Esta Semana</h4>
+
+                    
+
+
+                    <div class="stat-card-large">
+
+                        <div class="stat-value-large" id="weekTotalHours">0h 0m</div>
+
+                        <div class="stat-label-large">⏱️ Total Trabalhado</div>
+
+                    </div>
+
+                    
+
+
+                    <div class="stats-grid-two">
+
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+
+                            <div class="stat-value" style="color: var(--secondary-color);" id="weekProjectHours">0h 0m</div>
+
+                            <div class="stat-label">🏢 Projeto</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--internal-color);">
+
+                            <div class="stat-value" style="color: var(--internal-color);" id="weekInternalHours">0h 0m</div>
+
+                            <div class="stat-label">🏠 Interno</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="dados-section">
+
+                    <h4 style="margin-bottom: 10px; color: var(--primary-color);">📋 Histórico Recente</h4>
+
+                    <div id="workHistory" class="work-history"></div>
+
+                </div>
+
+
+
+
+                <div id="adminQuickStats" class="hidden dados-section">
+
+                    <h4 style="margin-bottom: 15px; color: var(--admin-color);">🛡️ Vista Administrativa - Hoje</h4>
+
+                    <div class="stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="adminTodayTotal">0h 0m</div>
+
+                            <div class="stat-label">Total Geral</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+
+                            <div class="stat-value" style="color: var(--secondary-color);" id="adminTodayProject">0h 0m</div>
+
+                            <div class="stat-label">🏢 Projeto</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--internal-color);">
+
+                            <div class="stat-value" style="color: var(--internal-color);" id="adminTodayInternal">0h 0m</div>
+
+                            <div class="stat-label">🏠 Interno</div>
+
+                        </div>
+
+                    </div>
+
+                    
+
+                    <h4 style="margin: 20px 0 15px 0; color: var(--admin-color);">📊 Vista Administrativa - Esta Semana</h4>
+
+                    <div class="stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="adminWeekTotal">0h 0m</div>
+
+                            <div class="stat-label">Total Geral</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+
+                            <div class="stat-value" style="color: var(--secondary-color);" id="adminWeekProject">0h 0m</div>
+
+                            <div class="stat-label">🏢 Projeto</div>
+
+                        </div>
+
+                        <div class="stat-card" style="border-color: var(--internal-color);">
+
+                            <div class="stat-value" style="color: var(--internal-color);" id="adminWeekInternal">0h 0m</div>
+
+                            <div class="stat-label">🏠 Interno</div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <h4 style="margin: 20px 0 15px 0; color: var(--admin-color);">📈 Resumo Geral</h4>
+
+                    <div class="stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="dashCompanyTotalUsers">0</div>
+
+                            <div class="stat-label">Utilizadores</div>
+
+                        </div>
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="dashCompanyTotalProjects">0</div>
+
+                            <div class="stat-label">Obras Ativas</div>
+
+                        </div>
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="dashCompanyTotalSessions">0</div>
+
+                            <div class="stat-label">Sessões Totais</div>
+
+                        </div>
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="dashCompanyTotalHours">0h</div>
+
+                            <div class="stat-label">Horas Totais (Global)</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="obrasTab" class="tab-content">
+
+                <h3 style="margin-bottom: 20px;">📋 Obras</h3>
+
+                <div class="sub-tabs">
+                    <button class="sub-tab active" onclick="showSubTab(event, 'obras', 'lista')">📋 Lista</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'obras', 'horas')">⏱️ Horas por Obra</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'obras', 'reaberturas')">🔄 Reaberturas</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'obras', 'comments')">💬 Comentários</button>
+                </div>
+
+                <div id="obras-lista" class="sub-content active">
+
+                    <button id="newProjectBtn" class="btn btn-success" onclick="openNewProjectModal()" style="margin-bottom: 20px;">🆕 Abrir Nova Obra</button>
+
+                    <div id="projectsStatsPanel" class="info-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--primary-color);">📊 Estatísticas Rápidas</h4>
+                        <div class="stats-grid" style="margin-top: 10px;">
+                            <div style="text-align: center; padding: 10px;">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--success-color);" id="statsOpenProjects">0</div>
+                                <div style="font-size: 11px; color: #6c757d;">Obras Abertas</div>
+                            </div>
+                            <div style="text-align: center; padding: 10px;">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--accent-color);" id="statsClosedProjects">0</div>
+                                <div style="font-size: 11px; color: #6c757d;">Obras Fechadas</div>
+                            </div>
+                            <div style="text-align: center; padding: 10px;">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--warning-color);" id="statsClientReopens">0</div>
+                                <div style="font-size: 11px; color: #6c757d;">Reaberturas (Cliente)</div>
+                            </div>
+                            <div style="text-align: center; padding: 10px;">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--accent-color);" id="statsErrorReopens">0</div>
+                                <div style="font-size: 11px; color: #6c757d;">Reaberturas (Erro Nosso)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filter-section">
+                        <label>Filtrar Obras</label>
+                        <select id="projectStatusFilter" onchange="loadProjectsList()">
+                            <option value="open">Obras Abertas</option>
+                            <option value="closed">Obras Fechadas</option>
+                            <option value="all">Todas as Obras</option>
+                        </select>
+                    </div>
+                    <div id="projectsList" class="projects-list"></div>
+
+                </div>
+
+                <div id="obras-horas" class="sub-content">
+                    <div class="info-panel" style="margin-bottom: 20px;">
+                        <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">⏱️ Consulte as horas trabalhadas em cada obra, filtradas por estado, departamento e subcategoria.</p>
+                    </div>
+
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label>Estado da Obra</label>
+                            <select id="horasObraStatusFilter" onchange="updateHorasPorObra()">
+                                <option value="all">Todas</option>
+                                <option value="open">Abertas</option>
+                                <option value="closed">Concluídas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Obra</label>
+                            <select id="horasObraSelect" onchange="updateHorasPorObra()">
+                                <option value="all">Todas as Obras</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Departamento</label>
+                            <select id="horasObraDepartmentFilter" onchange="updateHorasPorObraSubcategories(); updateHorasPorObra()">
+                                <option value="all">Todos</option>
+                                <option value="projeto">Projeto</option>
+                                <option value="eletrico">Elétrico</option>
+                                <option value="desenvolvimento">Desenvolvimento</option>
+                                <option value="orcamentacao">Orçamentação</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" id="horasObraSubcategoryGroup">
+                            <label>Subcategoria</label>
+                            <select id="horasObraSubcategoryFilter" onchange="updateHorasPorObra()">
+                                <option value="all">Todas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="horas-obra-summary">
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="horasObraTotalHours">0h 0m</div>
+                            <div class="horas-obra-stat-label">Total de Horas</div>
+                        </div>
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="horasObraTotalSessions">0</div>
+                            <div class="horas-obra-stat-label">Sessões</div>
+                        </div>
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="horasObraTotalProjects">0</div>
+                            <div class="horas-obra-stat-label">Obras</div>
+                        </div>
+                    </div>
+
+                    <div class="horas-obra-actions">
+                        <button class="btn btn-primary btn-small" onclick="exportHorasPorObraCSV()">📥 Exportar CSV</button>
+                    </div>
+
+                    <div id="horasObraList" class="horas-obra-list"></div>
+                </div>
+
+                <div id="obras-reaberturas" class="sub-content">
+                    <div class="info-panel" style="margin-bottom: 20px;">
+                        <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">📊 Estatísticas de obras que foram reabertas após conclusão. As horas mostradas são apenas as trabalhadas após a reabertura.</p>
+                    </div>
+
+                    <div class="reopen-stats-summary">
+                        <div class="reopen-stat-card client">
+                            <div class="reopen-stat-icon">👤</div>
+                            <div class="reopen-stat-content">
+                                <div class="reopen-stat-title">Alterações do Cliente</div>
+                                <div class="reopen-stat-row">
+                                    <span class="reopen-stat-label">Obras:</span>
+                                    <span class="reopen-stat-value" id="reopenClientCount">0</span>
+                                </div>
+                                <div class="reopen-stat-row highlight">
+                                    <span class="reopen-stat-label">Horas Após Reabertura:</span>
+                                    <span class="reopen-stat-value" id="reopenClientHours">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="reopen-stat-card error">
+                            <div class="reopen-stat-icon">⚠️</div>
+                            <div class="reopen-stat-content">
+                                <div class="reopen-stat-title">Erros Internos</div>
+                                <div class="reopen-stat-row">
+                                    <span class="reopen-stat-label">Obras:</span>
+                                    <span class="reopen-stat-value" id="reopenErrorCount">0</span>
+                                </div>
+                                <div class="reopen-stat-row highlight">
+                                    <span class="reopen-stat-label">Horas Após Reabertura:</span>
+                                    <span class="reopen-stat-value" id="reopenErrorHours">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="reopen-sections">
+                        <div class="reopen-section">
+                            <h4 class="reopen-section-title client">👤 Obras Reabertas por Alteração do Cliente</h4>
+                            <div id="reopenClientList" class="reopen-list"></div>
+                        </div>
+                        <div class="reopen-section">
+                            <h4 class="reopen-section-title error">⚠️ Obras Reabertas por Erro Interno</h4>
+                            <div id="reopenErrorList" class="reopen-list"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="obras-comments" class="sub-content">
+                    <div class="info-panel" style="margin-bottom: 20px;">
+                        <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">Consulte e adicione comentários às obras. Os comentários ficam associados ao código da obra.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Selecione uma Obra</label>
+                        <select id="selectWorkForComments" onchange="loadCommentsForWork()">
+                            <option value="">-- Selecione --</option>
+                        </select>
+                    </div>
+                    <div id="commentsDisplay" class="hidden">
+                        <div class="comment-section">
+                            <h4 style="margin-bottom: 10px;">Comentários:</h4>
+                            <div class="comment-list" id="workCommentsList"></div>
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label>Adicionar Comentário</label>
+                                <textarea id="quickComment" placeholder="Escreva seu comentário..."></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="addQuickComment()">➕ Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="calendarioTab" class="tab-content">
+
+                <h3 style="margin-bottom: 20px;">📅 Calendário</h3>
+
+                <div class="sub-tabs">
+                    <button class="sub-tab active" onclick="showSubTab(event, 'calendario', 'anual')">📅 Anual</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'calendario', 'semanas')">📊 Semanas</button>
+                </div>
+
+                <div id="calendario-anual" class="sub-content active">
+                    <div class="annual-calendar-container">
+                        <div class="calendar-year-header">
+                            <div class="year-display" id="currentYearDisplay">2026</div>
+                            <div class="year-navigation">
+                                <button class="year-nav-btn" onclick="goToCurrentYear()">Hoje</button>
+                                <button class="year-nav-btn" onclick="changeYear(1)">Seguinte ▶</button>
+                            </div>
+                        </div>
+
+                        <div class="calendar-info-panel">
+                            <p>
+                                <strong>📅 Como funciona:</strong> 
+                                Os dias trabalhados aparecem automaticamente a <strong style="color: #28a745;">verde</strong> baseados no seu histórico. 
+                                <strong style="color: #2196F3;">Feriados nacionais</strong> 🎉 estão marcados automaticamente. 
+                                Clique em qualquer dia para marcar férias <strong style="color: #ffc107;">🏖️</strong> ou faltas <strong style="color: #dc3545;">❌</strong>. 
+                            </p>
+                        </div>
+
+                        <button class="quick-mark-vacation" onclick="openVacationPeriodModal()">
+                            <span style="font-size: 24px;">🏖️</span>
+                            <span>Marcar Período de Férias</span>
+                        </button>
+
+                        <div class="annual-stats">
+                            <div class="annual-stat-card stat-worked">
+                                <div class="stat-value" id="statWorkedDays">0</div>
+                                <div class="stat-label">Dias Trabalhados</div>
+                            </div>
+                            <div class="annual-stat-card stat-vacation">
+                                <div class="stat-value" id="statVacationDays">0</div>
+                                <div class="stat-label">Dias de Férias</div>
+                            </div>
+                            <div class="annual-stat-card stat-absence">
+                                <div class="stat-value" id="statAbsenceDays">0</div>
+                                <div class="stat-label">Faltas</div>
+                            </div>
+                            <div class="annual-stat-card stat-holiday">
+                                <div class="stat-value" id="statHolidayDays">0</div>
+                                <div class="stat-label">Feriados</div>
+                            </div>
+                            <div class="annual-stat-card stat-weekend">
+                                <div class="stat-value" id="statWeekendDays">0</div>
+                                <div class="stat-label">Domingos</div>
+                            </div>
+                            <div class="annual-stat-card stat-remaining">
+                                <div class="stat-value" id="statRemainingDays">0</div>
+                                <div class="stat-label">Dias Restantes</div>
+                            </div>
+                        </div>
+
+                        <div class="annual-calendar-grid" id="annualCalendarGrid"></div>
+
+                        <div class="calendar-legend">
+                            <div class="legend-item">
+                                <div class="legend-icon worked">💼</div>
+                                <span>Dia Trabalhado</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon vacation">🏖️</div>
+                                <span>Férias</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon absence">❌</div>
+                                <span>Falta</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon holiday">🎉</div>
+                                <span>Feriado</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon weekend">🏠</div>
+                                <span>Domingo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="calendario-semanas" class="sub-content">
+                    <div class="info-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--primary-color);">📊 Horas Trabalhadas por Semana</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Visualize as horas trabalhadas em cada semana do ano</p>
+                    </div>
+
+                    <div class="filter-section weeks-filters">
+                        <div class="filter-group">
+                            <label>📅 Ano</label>
+                            <select id="weeksYearFilter" onchange="updateWeeksMonthFilter()">
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>📆 Mês</label>
+                            <select id="weeksMonthFilter" onchange="updateWeeksWeekFilter()">
+                                <option value="all">Todos os meses</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>🗓️ Semana</label>
+                            <select id="weeksWeekFilter" onchange="updateWeeksView()">
+                                <option value="all">Todas as semanas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="weeksContainer" class="weeks-container"></div>
+                </div>
+
+            </div>
+
+            <div id="equipaTab" class="tab-content">
+
+                <h3 style="margin-bottom: 20px;">👥 Equipa</h3>
+
+                <div class="sub-tabs">
+                    <button class="sub-tab active" onclick="showSubTab(event, 'equipa', 'horas')">⏱️ Horas</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'equipa', 'obras')">📋 Obras</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'equipa', 'reaberturas')">🔄 Reaberturas</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'equipa', 'calendarios')">📆 Calendários</button>
+                    <button class="sub-tab" onclick="showSubTab(event, 'equipa', 'utilizadores')">🛡️ Utilizadores</button>
+                </div>
+
+                <div id="equipa-horas" class="sub-content active">
+
+                    <div class="info-panel admin-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--admin-color);">👥 Horas da Equipa</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Visualize e filtre as horas debitadas por cada utilizador da equipa</p>
+                    </div>
+
+                    <div class="filter-section team-hours-filters">
+                        <div class="filter-group">
+                            <label>👤 Utilizador</label>
+                            <select id="teamUserFilter" onchange="updateTeamHoursView()">
+                                <option value="all">Todos os Utilizadores</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>📅 Período</label>
+                            <select id="teamPeriodFilter" onchange="updateTeamHoursView()">
+                                <option value="today">Hoje</option>
+                                <option value="week" selected>Esta Semana</option>
+                                <option value="month">Este Mês</option>
+                                <option value="year">Este Ano</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" id="teamCustomDateGroup" style="display: none;">
+                            <label>📆 De</label>
+                            <input type="date" id="teamDateFrom" onchange="updateTeamHoursView()">
+                        </div>
+                        <div class="filter-group" id="teamCustomDateToGroup" style="display: none;">
+                            <label>📆 Até</label>
+                            <input type="date" id="teamDateTo" onchange="updateTeamHoursView()">
+                        </div>
+                        <div class="filter-group">
+                            <label>🏷️ Tipo de Trabalho</label>
+                            <select id="teamWorkTypeFilter" onchange="updateTeamHoursView()">
+                                <option value="all">Todos</option>
+                                <option value="project">Projeto</option>
+                                <option value="internal">Interno</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" id="teamDepartmentGroup">
+                            <label>🏢 Departamento</label>
+                            <select id="teamDepartmentFilter" onchange="updateTeamHoursView()">
+                                <option value="all">Todos</option>
+                                <option value="projeto">Projeto</option>
+                                <option value="eletrico">Elétrico</option>
+                                <option value="desenvolvimento">Desenvolvimento</option>
+                                <option value="orcamentacao">Orçamentação</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="team-hours-summary">
+                        <div class="team-hours-stat">
+                            <div class="team-hours-stat-value" id="teamTotalHours">0h</div>
+                            <div class="team-hours-stat-label">Total</div>
+                        </div>
+                        <div class="team-hours-stat project">
+                            <div class="team-hours-stat-value" id="teamProjectHours">0h</div>
+                            <div class="team-hours-stat-label">🏢 Projeto</div>
+                        </div>
+                        <div class="team-hours-stat internal">
+                            <div class="team-hours-stat-value" id="teamInternalHours">0h</div>
+                            <div class="team-hours-stat-label">🏠 Interno</div>
+                        </div>
+                        <div class="team-hours-stat sessions">
+                            <div class="team-hours-stat-value" id="teamTotalSessions">0</div>
+                            <div class="team-hours-stat-label">📝 Sessões</div>
+                        </div>
+                    </div>
+
+                    <div class="team-hours-table-container">
+                        <h4 style="margin: 20px 0 15px 0; color: var(--admin-color);">📊 Resumo por Utilizador</h4>
+                        <div class="team-hours-table" id="teamHoursTable"></div>
+                    </div>
+
+                    <div class="team-sessions-container">
+                        <h4 style="margin: 20px 0 15px 0; color: var(--admin-color);">📋 Detalhe das Sessões</h4>
+                        <div id="teamSessionsList" class="work-history"></div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="exportTeamHoursCSV()">📄 Exportar CSV</button>
+                        <button class="btn btn-primary" onclick="exportTeamHoursJSON()">📋 Exportar JSON</button>
+                    </div>
+
+                </div>
+
+                <div id="equipa-obras" class="sub-content">
+
+                    <div class="info-panel admin-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--admin-color);">📋 Horas por Obra (Equipa)</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Visualize o total de horas gastas em cada obra por todos os utilizadores da equipa</p>
+                    </div>
+
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label>Estado da Obra</label>
+                            <select id="projectHoursStatusFilter" onchange="updateAdminProjectSelect(); updateProjectHoursView()">
+                                <option value="all">Todas</option>
+                                <option value="open">Abertas</option>
+                                <option value="closed">Concluídas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Obra</label>
+                            <select id="projectHoursObraSelect" onchange="updateProjectHoursView()">
+                                <option value="all">Todas as Obras</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Departamento</label>
+                            <select id="projectHoursDeptFilter" onchange="updateAdminSubcategories(); updateProjectHoursView()">
+                                <option value="all">Todos</option>
+                                <option value="projeto">Projeto</option>
+                                <option value="eletrico">Elétrico</option>
+                                <option value="desenvolvimento">Desenvolvimento</option>
+                                <option value="orcamentacao">Orçamentação</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" id="adminSubcategoryGroup">
+                            <label>Subcategoria</label>
+                            <select id="projectHoursSubcategoryFilter" onchange="updateProjectHoursView()">
+                                <option value="all">Todas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Utilizador</label>
+                            <select id="projectHoursUserFilter" onchange="updateProjectHoursView()">
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Pesquisar</label>
+                            <input type="text" id="projectHoursSearch" placeholder="Código ou nome..." oninput="updateProjectHoursView()">
+                        </div>
+                    </div>
+
+                    <div class="horas-obra-summary">
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="totalProjectsHours">0h 0m</div>
+                            <div class="horas-obra-stat-label">Total de Horas</div>
+                        </div>
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="totalProjectsSessions">0</div>
+                            <div class="horas-obra-stat-label">Sessões</div>
+                        </div>
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="totalProjectsCount">0</div>
+                            <div class="horas-obra-stat-label">Obras</div>
+                        </div>
+                        <div class="horas-obra-stat">
+                            <div class="horas-obra-stat-value" id="totalProjectsUsers">0</div>
+                            <div class="horas-obra-stat-label">Utilizadores</div>
+                        </div>
+                    </div>
+
+                    <div class="horas-obra-actions">
+                        <button class="btn btn-admin btn-small" onclick="exportProjectHoursCSV()">📥 Exportar CSV</button>
+                    </div>
+
+                    <div id="projectHoursTable" class="horas-obra-list"></div>
+
+                </div>
+
+                <div id="equipa-reaberturas" class="sub-content">
+
+                    <div class="info-panel admin-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--admin-color);">🔄 Reaberturas da Equipa</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Visualize as horas gastas em obras reabertas por todos os utilizadores</p>
+                    </div>
+
+                    <div class="reopen-stats-summary">
+                        <div class="reopen-stat-card total">
+                            <div class="reopen-stat-icon">📊</div>
+                            <div class="reopen-stat-content">
+                                <div class="reopen-stat-title">Total Geral</div>
+                                <div class="reopen-stat-row">
+                                    <span class="reopen-stat-label">Obras Reabertas:</span>
+                                    <span class="reopen-stat-value" id="adminReopenTotalCount">0</span>
+                                </div>
+                                <div class="reopen-stat-row highlight">
+                                    <span class="reopen-stat-label">Total Horas:</span>
+                                    <span class="reopen-stat-value" id="adminReopenTotalHours">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="reopen-stat-card client">
+                            <div class="reopen-stat-icon">👤</div>
+                            <div class="reopen-stat-content">
+                                <div class="reopen-stat-title">Alterações do Cliente</div>
+                                <div class="reopen-stat-row">
+                                    <span class="reopen-stat-label">Obras:</span>
+                                    <span class="reopen-stat-value" id="adminReopenClientCount">0</span>
+                                </div>
+                                <div class="reopen-stat-row highlight">
+                                    <span class="reopen-stat-label">Horas:</span>
+                                    <span class="reopen-stat-value" id="adminReopenClientHours">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="reopen-stat-card error">
+                            <div class="reopen-stat-icon">⚠️</div>
+                            <div class="reopen-stat-content">
+                                <div class="reopen-stat-title">Erros Internos</div>
+                                <div class="reopen-stat-row">
+                                    <span class="reopen-stat-label">Obras:</span>
+                                    <span class="reopen-stat-value" id="adminReopenErrorCount">0</span>
+                                </div>
+                                <div class="reopen-stat-row highlight">
+                                    <span class="reopen-stat-label">Horas:</span>
+                                    <span class="reopen-stat-value" id="adminReopenErrorHours">0h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 25px 0 15px; color: var(--admin-color);">👥 Horas por Utilizador</h4>
+                    <div class="admin-reopen-users-table" id="adminReopenUsersTable"></div>
+
+                    <h4 style="margin: 25px 0 15px; color: var(--admin-color);">📋 Detalhe por Obra</h4>
+                    <div class="admin-reopen-projects-list" id="adminReopenProjectsList"></div>
+
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="exportAdminReopensCSV()">📄 Exportar CSV</button>
+                    </div>
+
+                </div>
+
+                <div id="equipa-calendarios" class="sub-content">
+
+                    <div class="info-panel admin-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--admin-color);">📆 Calendários da Equipa</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Visualize o calendário de cada utilizador para controlar férias e dias trabalhados</p>
+                    </div>
+
+                    <div class="filter-section">
+                        <div class="filter-group">
+                            <label>👤 Selecionar Utilizador</label>
+                            <select id="teamCalendarUserFilter" onchange="loadTeamCalendarView()">
+                                <option value="">Selecione um utilizador</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="teamVacationsSummary" class="team-vacations-summary"></div>
+
+                    <div id="teamCalendarStats" class="hidden">
+                        <div class="team-calendar-header">
+                            <div class="team-calendar-user-info">
+                                <span class="team-calendar-user-icon">👤</span>
+                                <span id="teamCalendarUserName">-</span>
+                            </div>
+                            <div class="calendar-year-header">
+                                <div class="year-display" id="teamCalendarYearDisplay">2026</div>
+                                <div class="year-navigation">
+                                    <button class="year-nav-btn" onclick="changeTeamCalendarYear(-1)">◀ Anterior</button>
+                                    <button class="year-nav-btn" onclick="goToTeamCurrentYear()">Hoje</button>
+                                    <button class="year-nav-btn" onclick="changeTeamCalendarYear(1)">Seguinte ▶</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="annual-stats team-annual-stats">
+                            <div class="annual-stat-card stat-worked">
+                                <div class="stat-value" id="teamStatWorkedDays">0</div>
+                                <div class="stat-label">Dias Trabalhados</div>
+                            </div>
+                            <div class="annual-stat-card stat-vacation">
+                                <div class="stat-value" id="teamStatVacationDays">0</div>
+                                <div class="stat-label">Dias de Férias</div>
+                            </div>
+                            <div class="annual-stat-card stat-absence">
+                                <div class="stat-value" id="teamStatAbsenceDays">0</div>
+                                <div class="stat-label">Faltas</div>
+                            </div>
+                            <div class="annual-stat-card stat-holiday">
+                                <div class="stat-value" id="teamStatHolidayDays">0</div>
+                                <div class="stat-label">Feriados</div>
+                            </div>
+                            <div class="annual-stat-card stat-weekend">
+                                <div class="stat-value" id="teamStatWeekendDays">0</div>
+                                <div class="stat-label">Domingos</div>
+                            </div>
+                            <div class="annual-stat-card stat-remaining">
+                                <div class="stat-value" id="teamStatRemainingDays">0</div>
+                                <div class="stat-label">Dias Restantes</div>
+                            </div>
+                        </div>
+
+                        <div style="margin: 15px 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="exportTeamCalendarCSV()">📄 Exportar Calendário CSV</button>
+                            <button class="btn btn-secondary" onclick="exportAllTeamCalendarsCSV()">📊 Exportar Todos CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="annual-calendar-grid team-calendar-grid" id="teamCalendarContainer">
+                        <div class="empty-calendar-message">
+                            <span style="font-size: 48px;">📅</span>
+                            <p>Selecione um utilizador para ver o calendário</p>
+                        </div>
+                    </div>
+
+                    <div class="calendar-legend" style="margin-top: 20px;">
+                        <div class="legend-item">
+                            <div class="legend-icon worked">💼</div>
+                            <span>Dia Trabalhado</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon vacation">🏖️</div>
+                            <span>Férias</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon absence">❌</div>
+                            <span>Falta</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon holiday">🎉</div>
+                            <span>Feriado</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-icon weekend">🏠</div>
+                            <span>Domingo</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="equipa-utilizadores" class="sub-content">
+
+                    <div class="info-panel admin-panel" style="margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 10px; color: var(--admin-color);">🛡️ Gestão de Utilizadores</h4>
+                        <p style="font-size: 12px; color: #6c757d;">Gerir utilizadores e permissões de administrador</p>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom: 20px;">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalUsersCount">0</div>
+                            <div class="stat-label">Total Utilizadores</div>
+                        </div>
+                        <div class="stat-card" style="border-color: var(--admin-color);">
+                            <div class="stat-value" style="color: var(--admin-color);" id="adminUsersCount">0</div>
+                            <div class="stat-label">Administradores</div>
+                        </div>
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+                            <div class="stat-value" style="color: var(--secondary-color);" id="regularUsersCount">0</div>
+                            <div class="stat-label">Utilizadores Regulares</div>
+                        </div>
+                    </div>
+
+                    <div id="adminUsersList" class="users-list"></div>
+
+                </div>
+
+            </div>
+
+            <div id="dataTab" class="tab-content">
+
+                <h3 style="margin-bottom: 20px;">💾 Dados</h3>
+
+
+
+
+                <div class="sub-tabs">
+
+                    <button class="sub-tab active" onclick="showSubTab(event, 'data', 'reports')">📊 Relatórios</button>
+
+                    <button class="sub-tab" onclick="showSubTab(event, 'data', 'export')">💾 Exportar</button>
+
+                </div>
+
+
+
+
+                <div id="data-reports" class="sub-content active">
+
+                    <div class="filter-section">
+
+                        <label>Filtrar por Tipo</label>
+
+                        <select id="reportTypeFilter" onchange="updateReports()">
+
+                            <option value="all">Todos os Trabalhos</option>
+
+                            <option value="project">Trabalho de Projeto</option>
+
+                            <option value="internal">Trabalho Interno</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="filter-section" id="departmentFilterSection">
+
+                        <label>Filtrar por Departamento</label>
+
+                        <select id="reportFilter" onchange="updateReports()">
+
+                            <option value="all">Todos os Departamentos</option>
+
+                            <option value="projeto">Projeto</option>
+
+                            <option value="eletrico">Elétrico</option>
+
+                            <option value="desenvolvimento">Desenvolvimento</option>
+
+                            <option value="orcamentacao">Orçamentação</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="filter-section hidden" id="internalCategoryFilterSection">
+
+                        <label>Filtrar por Categoria Interna</label>
+
+                        <select id="internalCategoryFilter" onchange="updateReports()">
+
+                            <option value="all">Todas as Categorias</option>
+
+                            <option value="reuniao">Reunião</option>
+
+                            <option value="formacao">Formação</option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="stats-grid">
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="totalProjectHours">0h</div>
+
+                            <div class="stat-label">Total Horas Projeto</div>
+
+                        </div>
+
+                        <div class="stat-card">
+
+                            <div class="stat-value" id="totalInternalHours">0h</div>
+
+                            <div class="stat-label">Total Horas Interno</div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label>Todas as Sessões</label>
+
+                        <div id="fullHistory" class="work-history"></div>
+
+                    </div>
+
+                </div>
+
+
+
+
+                <div id="data-export" class="sub-content">
+
+                    <div class="info-panel" style="margin-bottom: 20px;">
+
+                        <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">Exporte os seus dados de controlo de horas para integração com sistemas PHC ou backup pessoal.</p>
+
+                    </div>
+
+                    <div class="button-group">
+
+                        <button class="btn btn-primary" onclick="exportCSV()">📄 Exportar CSV</button>
+
+                        <button class="btn btn-primary" onclick="exportJSON()">📋 Exportar JSON</button>
+
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0;">Backup e Restauro</h3>
+
+                    <div class="button-group">
+
+                        <button class="btn btn-warning" onclick="backupData()">💾 Backup Completo</button>
+
+                        <button class="btn btn-secondary" onclick="document.getElementById('restoreFile').click()">📥 Restaurar</button>
+
+                    </div>
+
+                    <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreData(this)">
+
+                    <div class="info-panel" style="margin-top: 20px;">
+
+                        <div class="info-item">
+
+                            <span class="label">Total de Sessões:</span>
+
+                            <span class="value" id="exportSessionCount">0</span>
+
+                        </div>
+
+                        <div class="info-item">
+
+                            <span class="label">Obras Registadas:</span>
+
+                            <span class="value" id="exportProjectCount">0</span>
+
+                        </div>
+
+                        <div class="info-item">
+
+                            <span class="label">Utilizadores Registados:</span>
+
+                            <span class="value" id="exportUserCount">0</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="profileTab" class="tab-content">
+
+                <h3 style="margin-bottom: 20px;">👤 Perfil</h3>
+
+
+
+
+                <div class="profile-main-content">
+
+                    <div class="info-panel" style="margin-bottom: 20px;">
+
+                        <p style="color: #6c757d; font-size: 14px; line-height: 1.6;">Visualize e edite as suas informações pessoais e credenciais de acesso.</p>
+
+                    </div>
+
+                    
+
+                    <div id="profileError" class="error-message hidden"></div>
+
+                    <div id="profileSuccess" class="success-message hidden"></div>
+
+                    
+
+                    <h4 style="margin: 20px 0 15px 0;">📷 Foto de Perfil</h4>
+
+                    <div class="profile-photo-section">
+
+                        <div class="profile-photo-container">
+
+                            <img id="profilePhotoPreview" src="" alt="Foto de Perfil" class="profile-photo">
+
+                            <div class="profile-photo-placeholder">
+
+                                <span id="profileInitials">?</span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="profile-photo-actions">
+
+                            <input type="file" id="profilePhotoInput" accept="image/*" style="display: none;" onchange="handleProfilePhotoChange(event)">
+
+                            <button class="btn btn-primary" onclick="document.getElementById('profilePhotoInput').click()">📷 Escolher Foto</button>
+
+                            <button class="btn btn-secondary" onclick="removeProfilePhoto()" id="removePhotoBtn" style="display: none;">🗑️ Remover Foto</button>
+
+                        </div>
+
+                    </div>
+
+                    
+
+                    <h4 style="margin: 20px 0 15px 0;">📋 Informações Pessoais</h4>
+
+                    <div class="form-group">
+
+                        <label for="profileFirstName">Primeiro Nome</label>
+
+                        <input type="text" id="profileFirstName" placeholder="Primeiro nome">
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="profileLastName">Último Nome</label>
+
+                        <input type="text" id="profileLastName" placeholder="Último nome">
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="profileDepartment">Departamento Padrão</label>
+
+                        <select id="profileDepartment">
+
+                            <option value="">Selecione o departamento</option>
+
+                            <option value="projeto">Projeto</option>
+
+                            <option value="eletrico">Elétrico</option>
+
+                            <option value="desenvolvimento">Desenvolvimento</option>
+
+                            <option value="orcamentacao">Orçamentação</option>
+
+                        </select>
+
+                    </div>
+
+                    <button class="btn btn-primary" onclick="updatePersonalInfo()">💾 Guardar Informações</button>
+
+                    
+
+                    <h4 style="margin: 30px 0 15px 0;">🔐 Credenciais de Acesso</h4>
+
+                    <div class="form-group">
+
+                        <label for="profileUsername">Nome de Utilizador</label>
+
+                        <input type="text" id="profileUsername" placeholder="Nome de utilizador (mínimo 3 caracteres)">
+
+                    </div>
+
+                    <button class="btn btn-warning" onclick="updateUsername()">✏️ Alterar Username</button>
+
+                    
+
+                    <h4 style="margin: 30px 0 15px 0;">🔑 Alterar Password</h4>
+
+                    <div class="form-group">
+
+                        <label for="profileOldPassword">Password Atual</label>
+
+                        <input type="password" id="profileOldPassword" placeholder="Password atual">
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="profileNewPassword">Nova Password</label>
+
+                        <input type="password" id="profileNewPassword" placeholder="Nova password (mínimo 6 caracteres)">
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="profileConfirmPassword">Confirmar Nova Password</label>
+
+                        <input type="password" id="profileConfirmPassword" placeholder="Confirme a nova password">
+
+                    </div>
+
+                    <button class="btn btn-success" onclick="updatePassword()">🔒 Alterar Password</button>
+
+                    
+
+                    <div class="info-panel" style="margin-top: 30px;">
+
+                        <div class="info-item">
+
+                            <span class="label">Tipo de Conta:</span>
+
+                            <span class="value" id="profileAccountType">-</span>
+
+                        </div>
+
+                        <div class="info-item">
+
+                            <span class="label">Membro desde:</span>
+
+                            <span class="value">Utilizador existente</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+            </div>
+
+
+
+            <button class="btn btn-secondary" onclick="logout()" style="margin-top: 20px;">Sair</button>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="teamDayModal" class="modal">
+        <div class="modal-content">
+            <h2>📅 Detalhes do Dia</h2>
+            <div class="team-day-modal-header">
+                <div class="team-modal-user">👤 <span id="teamModalUserName">-</span></div>
+                <div class="team-modal-date" id="teamModalDayDate">-</div>
+            </div>
+            <div id="teamModalDayContent"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeTeamDayModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="api-layer.js"></script>
+    <script src="calendar-simple.js"></script>
+
+    <script src="admin.js"></script>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>

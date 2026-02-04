@@ -1,0 +1,17 @@
+{
+  "name": "folha-controlo-obra-servidor",
+  "version": "1.0.0",
+  "description": "Backend da aplicação Folha de Controlo de Obra",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sql.js": "^1.10.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.4.1"
+  }
+}
