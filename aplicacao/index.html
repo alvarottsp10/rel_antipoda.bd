@@ -996,7 +996,38 @@
 
                 <div id="timerError" class="error-message hidden"></div>
 
+                <!-- Meta Diária -->
+                <div class="daily-goal-section">
+                    <div class="daily-goal-header">
+                        <span>🎯 Meta Diária</span>
+                        <select id="dailyGoalSelect" onchange="updateDailyGoal()">
+                            <option value="0">Sem meta</option>
+                            <option value="4">4 horas</option>
+                            <option value="6">6 horas</option>
+                            <option value="8" selected>8 horas</option>
+                            <option value="9">9 horas</option>
+                            <option value="10">10 horas</option>
+                        </select>
+                    </div>
+                    <div class="daily-goal-progress">
+                        <div class="daily-goal-bar">
+                            <div class="daily-goal-fill" id="dailyGoalFill" style="width: 0%"></div>
+                        </div>
+                        <div class="daily-goal-text">
+                            <span id="dailyGoalCurrent">0h 0m</span> / <span id="dailyGoalTarget">8h</span>
+                            <span id="dailyGoalPercent">(0%)</span>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Repetir última sessão -->
+                <div id="lastSessionPanel" class="last-session-panel hidden">
+                    <div class="last-session-info">
+                        <span class="last-session-label">Última sessão:</span>
+                        <span id="lastSessionDesc" class="last-session-desc"></span>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="repeatLastSession()">🔄 Repetir</button>
+                </div>
 
                 <div class="work-timer" id="workTimerDisplay">
 
@@ -1107,10 +1138,38 @@
 
                 </div>
 
+                <!-- Resumo Mensal -->
+                <div class="dados-section">
+                    <h4 style="margin-bottom: 15px; color: var(--primary-color);">📆 Este Mês</h4>
+                    <div class="stat-card-large">
+                        <div class="stat-value-large" id="monthTotalHours">0h 0m</div>
+                        <div class="stat-label-large">⏱️ Total Trabalhado</div>
+                    </div>
+                    <div class="stats-grid-two">
+                        <div class="stat-card" style="border-color: var(--secondary-color);">
+                            <div class="stat-value" style="color: var(--secondary-color);" id="monthProjectHours">0h 0m</div>
+                            <div class="stat-label">🏢 Projeto</div>
+                        </div>
+                        <div class="stat-card" style="border-color: var(--internal-color);">
+                            <div class="stat-value" style="color: var(--internal-color);" id="monthInternalHours">0h 0m</div>
+                            <div class="stat-label">🏠 Interno</div>
+                        </div>
+                    </div>
+                    <!-- Gráfico de barras últimas 4 semanas -->
+                    <div class="weekly-chart-container">
+                        <h5 style="margin: 15px 0 10px 0; color: #666;">📊 Últimas 4 Semanas</h5>
+                        <div class="weekly-chart" id="weeklyChart"></div>
+                    </div>
+                </div>
 
                 <div class="dados-section">
 
                     <h4 style="margin-bottom: 10px; color: var(--primary-color);">📋 Histórico Recente</h4>
+                    
+                    <!-- Pesquisa no histórico -->
+                    <div class="history-search-container">
+                        <input type="text" id="historySearch" placeholder="🔍 Pesquisar por obra ou descrição..." onkeyup="filterWorkHistory()">
+                    </div>
 
                     <div id="workHistory" class="work-history"></div>
 
@@ -2252,7 +2311,6 @@
 
 
 
-    <script src="api-layer.js"></script>
     <script src="calendar-simple.js"></script>
 
     <script src="admin.js"></script>

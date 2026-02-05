@@ -42,59 +42,17 @@ const HOLIDAYS = {
 
 let currentYear = 2026;
 
-// Cache local para calendário (carregado da API)
-let _calendarCache = {};
-let _historyCache = [];
-
-async function loadCalendarFromAPI() {
-    try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            _calendarCache = {};
-            return;
-        }
-        if (typeof apiRequest === 'function') {
-            _calendarCache = await apiRequest(`/calendar/${currentYear}`);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar calendário:', error);
-        _calendarCache = {};
-    }
-}
-
-async function loadHistoryForCalendar() {
-    try {
-        const user = localStorage.getItem('currentUser');
-        if (!user) {
-            _historyCache = [];
-            return;
-        }
-        // Usar cache do api-layer se disponível
-        const history = getWorkHistory();
-        if (Array.isArray(history)) {
-            _historyCache = history;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
-        _historyCache = [];
-    }
-}
-
 function getCalendarData() {
-    return _calendarCache || {};
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const key = `calendar_${currentYear}_${user.username}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : {};
 }
 
 function saveCalendarData(data) {
-    _calendarCache = data;
-    // Guardar cada entrada via API
-    Object.entries(data).forEach(([date, entry]) => {
-        if (typeof apiRequest === 'function') {
-            apiRequest('/calendar', {
-                method: 'POST',
-                body: JSON.stringify({ date, type: entry.type, note: entry.note })
-            }).catch(err => console.error('Erro ao guardar calendário:', err));
-        }
-    });
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const key = `calendar_${currentYear}_${user.username}`;
+    localStorage.setItem(key, JSON.stringify(data));
 }
 
 function formatDateKey(date) {
@@ -114,25 +72,7 @@ function isHoliday(dateStr) {
 }
 
 function hasWorkedOnDay(dateStr) {
-    // Verificar se há utilizador logado
-    const user = localStorage.getItem('currentUser');
-    if (!user) return false;
-    
-    // Usar cache local ou tentar obter do getWorkHistory
-    let history = _historyCache;
-    if (!history || history.length === 0) {
-        try {
-            history = getWorkHistory();
-            if (Array.isArray(history)) {
-                _historyCache = history;
-            } else {
-                return false;
-            }
-        } catch (e) {
-            return false;
-        }
-    }
-    if (!Array.isArray(history)) return false;
+    const history = getWorkHistory();
     return history.some(session => {
         const sessionDate = new Date(session.startTime);
         return formatDateKey(sessionDate) === dateStr;
@@ -578,7 +518,7 @@ function updateAnnualStats() {
     document.getElementById('statRemainingDays').textContent = remainingDays;
 }
 
-async function changeYear(delta) {
+function changeYear(delta) {
     const todayYear = new Date().getFullYear();
     const newYear = currentYear + delta;
     
@@ -587,28 +527,18 @@ async function changeYear(delta) {
     }
     
     currentYear = newYear;
-    const yearDisplay = document.getElementById('currentYearDisplay');
-    if (yearDisplay) yearDisplay.textContent = currentYear;
-    await loadCalendarFromAPI();
+    document.getElementById('currentYearDisplay').textContent = currentYear;
     renderAnnualCalendar(currentYear);
 }
 
-async function goToCurrentYear() {
+function goToCurrentYear() {
     currentYear = new Date().getFullYear();
-    const yearDisplay = document.getElementById('currentYearDisplay');
-    if (yearDisplay) yearDisplay.textContent = currentYear;
-    await loadCalendarFromAPI();
+    document.getElementById('currentYearDisplay').textContent = currentYear;
     renderAnnualCalendar(currentYear);
 }
 
-async function initializeAnnualCalendar() {
+function initializeAnnualCalendar() {
     currentYear = new Date().getFullYear();
-    const yearDisplay = document.getElementById('currentYearDisplay');
-    if (yearDisplay) yearDisplay.textContent = currentYear;
-    
-    // Carregar dados da API antes de renderizar
-    await loadCalendarFromAPI();
-    await loadHistoryForCalendar();
-    
+    document.getElementById('currentYearDisplay').textContent = currentYear;
     renderAnnualCalendar(currentYear);
 }

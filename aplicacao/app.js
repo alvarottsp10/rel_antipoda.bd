@@ -13,7 +13,7 @@ const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
 const subcategories = {
     'projeto': ['Horas Design', 'Documentação para Aprovação', 'Documentação para Fabrico', 'Documentação Técnica', 'Horas Aditamento', 'Horas de Não Conformidade'],
     'eletrico': ['Horas Design', 'Documentação para Aprovação', 'Documentação para Fabrico', 'Documentação Técnica', 'Horas Aditamento', 'Horas de Não Conformidade'],
-    'desenvolvimento': [],
+    'desenvolvimento': [],     
     'orcamentacao': ['Orçamento', 'Ordem de produção']
 };
 
@@ -839,7 +839,29 @@ function loadWorkHistory() {
         container.innerHTML = '<p style="text-align: center; color: #95a5a6; padding: 20px;">Sem histórico de trabalho</p>';
         return;
     }
-    container.innerHTML = history.slice(0, 5).map(session => {
+    
+    // Aplicar filtro de pesquisa se existir
+    const searchInput = document.getElementById('historySearch');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let filteredHistory = history;
+    if (searchTerm) {
+        filteredHistory = history.filter(session => {
+            const workCode = (session.workCode || '').toLowerCase();
+            const workName = (session.workName || '').toLowerCase();
+            const description = (session.internalDescription || '').toLowerCase();
+            const comment = (session.comment || '').toLowerCase();
+            return workCode.includes(searchTerm) || workName.includes(searchTerm) || 
+                   description.includes(searchTerm) || comment.includes(searchTerm);
+        });
+    }
+    
+    if (filteredHistory.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #95a5a6; padding: 20px;">Nenhum resultado encontrado</p>';
+        return;
+    }
+    
+    container.innerHTML = filteredHistory.slice(0, 10).map(session => {
         const date = new Date(session.startTime);
         const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         const commentHtml = session.comment ? `<div class="hist-comment">💬 ${session.comment}</div>` : '';
@@ -872,12 +894,18 @@ function loadWorkHistory() {
                 ${commentHtml}
                 <div class="hist-actions">
                     <button class="btn btn-primary btn-small" onclick="editSession(${session.id})">✏️ Editar</button>
+                    <button class="btn btn-success btn-small" onclick="duplicateSession(${session.id})">📋 Duplicar</button>
                     <button class="btn btn-warning btn-small" onclick="openComments(${session.id})">💬 Comentário</button>
                     <button class="btn btn-danger btn-small" onclick="deleteSession(${session.id})">🗑️ Apagar</button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+// Filtrar histórico por pesquisa
+function filterWorkHistory() {
+    loadWorkHistory();
 }
 
 function editSession(sessionId) {
@@ -3078,3 +3106,399 @@ window.showSubTab = function(event, parentTab, subTabName, programmatic = false)
         originalShowSubTab(event, parentTab, subTabName, programmatic);
     }
 };
+
+// ==================== NOVAS FUNCIONALIDADES ====================
+
+// Duplicar sessão
+function duplicateSession(sessionId) {
+    const history = getWorkHistory();
+    const session = history.find(s => s.id === sessionId);
+    if (!session) return;
+    
+    // Abrir modal de entrada manual com dados pré-preenchidos
+    openManualEntry();
+    
+    setTimeout(() => {
+        if (session.workType === 'internal') {
+            document.getElementById('manualWorkTypeInternal').checked = true;
+            updateManualFields();
+            document.getElementById('manualInternalCategory').value = session.internalCategory || 'reuniao';
+            document.getElementById('manualInternalDescription').value = session.internalDescription || '';
+            updateManualMeetingProjects();
+        } else {
+            document.getElementById('manualWorkTypeProject').checked = true;
+            updateManualFields();
+            const project = getProjects().find(p => p.workCode === session.workCode);
+            if (project) {
+                document.getElementById('manualProjectSelect').value = project.id;
+            }
+            if (session.projectType) {
+                document.getElementById('manualProjectType').value = session.projectType;
+                updateManualSubcategories();
+            }
+            if (session.subcategory) {
+                document.getElementById('manualSubcategory').value = session.subcategory;
+            }
+        }
+        
+        // Definir data/hora para agora
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - session.duration * 1000);
+        document.getElementById('manualStartTime').value = formatDateTimeLocal(oneHourAgo);
+        document.getElementById('manualEndTime').value = formatDateTimeLocal(now);
+    }, 100);
+    
+    showAlert('Duplicar Sessão', 'Dados da sessão copiados. Ajuste as datas e guarde.');
+}
+
+// Meta diária
+let dailyGoalHours = 8;
+
+function updateDailyGoal() {
+    const select = document.getElementById('dailyGoalSelect');
+    dailyGoalHours = parseInt(select.value) || 0;
+    localStorage.setItem('dailyGoalHours', dailyGoalHours);
+    updateDailyGoalProgress();
+}
+
+function loadDailyGoalSetting() {
+    const saved = localStorage.getItem('dailyGoalHours');
+    if (saved !== null) {
+        dailyGoalHours = parseInt(saved);
+        const select = document.getElementById('dailyGoalSelect');
+        if (select) select.value = dailyGoalHours;
+    }
+}
+
+function updateDailyGoalProgress() {
+    const history = getWorkHistory();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayHistory = history.filter(h => new Date(h.startTime) >= today);
+    const todaySeconds = todayHistory.reduce((sum, h) => sum + h.duration, 0);
+    
+    // Adicionar tempo do timer atual se estiver a correr
+    let totalSeconds = todaySeconds;
+    if (timerInterval && startTime) {
+        totalSeconds += timerSeconds;
+    }
+    
+    const goalSeconds = dailyGoalHours * 3600;
+    const percent = goalSeconds > 0 ? Math.min(100, (totalSeconds / goalSeconds) * 100) : 0;
+    
+    const fill = document.getElementById('dailyGoalFill');
+    const current = document.getElementById('dailyGoalCurrent');
+    const target = document.getElementById('dailyGoalTarget');
+    const percentEl = document.getElementById('dailyGoalPercent');
+    
+    if (fill) {
+        fill.style.width = percent + '%';
+        // Mudar cor baseado no progresso
+        if (percent >= 100) {
+            fill.style.backgroundColor = '#27ae60';
+        } else if (percent >= 75) {
+            fill.style.backgroundColor = '#2ecc71';
+        } else if (percent >= 50) {
+            fill.style.backgroundColor = '#f39c12';
+        } else {
+            fill.style.backgroundColor = '#3498db';
+        }
+    }
+    if (current) current.textContent = formatHoursMinutes(totalSeconds);
+    if (target) target.textContent = dailyGoalHours > 0 ? dailyGoalHours + 'h' : '--';
+    if (percentEl) percentEl.textContent = dailyGoalHours > 0 ? `(${Math.round(percent)}%)` : '';
+}
+
+// Estatísticas mensais
+function updateMonthStats() {
+    const history = getWorkHistory();
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const monthHistory = history.filter(h => new Date(h.startTime) >= startOfMonth);
+    const monthTotal = monthHistory.reduce((sum, h) => sum + h.duration, 0);
+    const monthProject = monthHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+    const monthInternal = monthHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    
+    const totalEl = document.getElementById('monthTotalHours');
+    const projectEl = document.getElementById('monthProjectHours');
+    const internalEl = document.getElementById('monthInternalHours');
+    
+    if (totalEl) totalEl.textContent = formatHoursMinutes(monthTotal);
+    if (projectEl) projectEl.textContent = formatHoursMinutes(monthProject);
+    if (internalEl) internalEl.textContent = formatHoursMinutes(monthInternal);
+    
+    // Atualizar gráfico semanal
+    updateWeeklyChart();
+}
+
+// Gráfico de barras das últimas 4 semanas
+function updateWeeklyChart() {
+    const container = document.getElementById('weeklyChart');
+    if (!container) return;
+    
+    const history = getWorkHistory();
+    const now = new Date();
+    const weeks = [];
+    
+    // Calcular últimas 4 semanas
+    for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay() - (i * 7));
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        
+        const weekHistory = history.filter(h => {
+            const d = new Date(h.startTime);
+            return d >= weekStart && d <= weekEnd;
+        });
+        
+        const weekTotal = weekHistory.reduce((sum, h) => sum + h.duration, 0);
+        const weekProject = weekHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+        const weekInternal = weekHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+        
+        weeks.push({
+            label: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`,
+            total: weekTotal,
+            project: weekProject,
+            internal: weekInternal
+        });
+    }
+    
+    // Encontrar máximo para escala
+    const maxHours = Math.max(...weeks.map(w => w.total / 3600), 1);
+    
+    container.innerHTML = weeks.map(week => {
+        const projectPercent = (week.project / 3600 / maxHours) * 100;
+        const internalPercent = (week.internal / 3600 / maxHours) * 100;
+        const hours = (week.total / 3600).toFixed(1);
+        
+        return `
+            <div class="weekly-bar-container">
+                <div class="weekly-bar">
+                    <div class="weekly-bar-project" style="height: ${projectPercent}%"></div>
+                    <div class="weekly-bar-internal" style="height: ${internalPercent}%"></div>
+                </div>
+                <div class="weekly-bar-label">${week.label}</div>
+                <div class="weekly-bar-hours">${hours}h</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Favoritos de obras
+function getFavoriteProjects() {
+    const saved = localStorage.getItem('favoriteProjects');
+    return saved ? JSON.parse(saved) : [];
+}
+
+function saveFavoriteProjects(favorites) {
+    localStorage.setItem('favoriteProjects', JSON.stringify(favorites));
+}
+
+function toggleFavoriteProject(projectId) {
+    let favorites = getFavoriteProjects();
+    const index = favorites.indexOf(projectId);
+    
+    if (index > -1) {
+        favorites.splice(index, 1);
+    } else {
+        favorites.push(projectId);
+    }
+    
+    saveFavoriteProjects(favorites);
+    loadProjectSelects(); // Recarregar selects com favoritos no topo
+}
+
+// Sobrescrever loadProjectSelects para mostrar favoritos primeiro
+const originalLoadProjectSelects = loadProjectSelects;
+function loadProjectSelectsWithFavorites() {
+    const openProjects = getOpenProjects();
+    const favorites = getFavoriteProjects();
+    
+    // Separar favoritos e não favoritos
+    const favoriteProjects = openProjects.filter(p => favorites.includes(p.id));
+    const otherProjects = openProjects.filter(p => !favorites.includes(p.id));
+    
+    const selects = ['projectSelect', 'manualProjectSelect', 'editProjectSelect'];
+    
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        let html = '<option value="">-- Selecione uma obra --</option>';
+        
+        if (favoriteProjects.length > 0) {
+            html += '<optgroup label="⭐ Favoritos">';
+            favoriteProjects.forEach(p => {
+                html += `<option value="${p.id}">⭐ ${p.workCode} - ${p.name || 'Sem nome'}</option>`;
+            });
+            html += '</optgroup>';
+        }
+        
+        if (otherProjects.length > 0) {
+            html += '<optgroup label="📋 Outras Obras">';
+            otherProjects.forEach(p => {
+                html += `<option value="${p.id}">${p.workCode} - ${p.name || 'Sem nome'}</option>`;
+            });
+            html += '</optgroup>';
+        }
+        
+        select.innerHTML = html;
+    });
+}
+
+// Substituir função original
+loadProjectSelects = loadProjectSelectsWithFavorites;
+
+// Notificação de fim de dia
+let endOfDayNotified = false;
+
+function checkEndOfDayNotification() {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Verificar às 18h
+    if (hour === 18 && !endOfDayNotified) {
+        const history = getWorkHistory();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayHistory = history.filter(h => new Date(h.startTime) >= today);
+        const todaySeconds = todayHistory.reduce((sum, h) => sum + h.duration, 0);
+        const todayHours = todaySeconds / 3600;
+        
+        if (todayHours < dailyGoalHours && dailyGoalHours > 0) {
+            const remaining = dailyGoalHours - todayHours;
+            showAlert('⏰ Fim de Dia', 
+                `Ainda faltam ${remaining.toFixed(1)} horas para atingir a meta diária de ${dailyGoalHours}h.`);
+            endOfDayNotified = true;
+        }
+    }
+    
+    // Reset à meia-noite
+    if (hour === 0) {
+        endOfDayNotified = false;
+    }
+}
+
+// Inicialização das novas funcionalidades
+const originalShowApp = showApp;
+showApp = function() {
+    originalShowApp();
+    loadDailyGoalSetting();
+    updateDailyGoalProgress();
+    updateMonthStats();
+    showLastSessionPanel();
+    
+    // Verificar notificação a cada minuto
+    setInterval(checkEndOfDayNotification, 60000);
+};
+
+// Atualizar meta diária quando o timer muda
+const originalUpdateTimerDisplay = updateTimerDisplay;
+if (typeof updateTimerDisplay === 'function') {
+    updateTimerDisplay = function() {
+        originalUpdateTimerDisplay();
+        updateDailyGoalProgress();
+    };
+}
+
+// Atualizar stats quando para o timer
+const originalStopWork = stopWork;
+stopWork = function() {
+    originalStopWork();
+    setTimeout(() => {
+        updateDailyGoalProgress();
+        updateMonthStats();
+        showLastSessionPanel();
+    }, 500);
+};
+
+// ==================== FUNCIONALIDADES ÚTEIS ====================
+
+// Mostrar painel da última sessão
+function showLastSessionPanel() {
+    const history = getWorkHistory();
+    const panel = document.getElementById('lastSessionPanel');
+    if (!panel || history.length === 0) {
+        if (panel) panel.classList.add('hidden');
+        return;
+    }
+    
+    const lastSession = history[0];
+    let desc = '';
+    
+    if (lastSession.workType === 'project') {
+        desc = `${lastSession.workCode} - ${getDepartmentName(lastSession.projectType)}`;
+        if (lastSession.subcategory) desc += ` (${lastSession.subcategory})`;
+    } else {
+        desc = lastSession.internalCategoryName || 'Trabalho Interno';
+    }
+    
+    document.getElementById('lastSessionDesc').textContent = desc;
+    panel.classList.remove('hidden');
+}
+
+// Repetir última sessão
+function repeatLastSession() {
+    const history = getWorkHistory();
+    if (history.length === 0) {
+        showAlert('Aviso', 'Não há sessões anteriores para repetir.');
+        return;
+    }
+    
+    const lastSession = history[0];
+    
+    // Preencher campos do timer
+    if (lastSession.workType === 'project') {
+        document.getElementById('workTypeProject').checked = true;
+        updateWorkTypeFields();
+        
+        const project = getProjects().find(p => p.workCode === lastSession.workCode);
+        if (project) {
+            document.getElementById('projectSelect').value = project.id;
+        }
+        
+        if (lastSession.projectType) {
+            document.getElementById('projectType').value = lastSession.projectType;
+            updateSubcategories();
+        }
+        
+        if (lastSession.subcategory) {
+            setTimeout(() => {
+                document.getElementById('subcategory').value = lastSession.subcategory;
+            }, 100);
+        }
+    } else {
+        document.getElementById('workTypeInternal').checked = true;
+        updateWorkTypeFields();
+        
+        if (lastSession.internalCategory) {
+            document.getElementById('internalCategory').value = lastSession.internalCategory;
+        }
+    }
+    
+    showToastNotification('Configuração da última sessão carregada!', 'success');
+}
+
+// Toast de notificação simples
+function showToastNotification(message, type = 'info') {
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translate(-50%, 20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}

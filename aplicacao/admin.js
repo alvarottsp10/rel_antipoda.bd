@@ -54,34 +54,25 @@ function migrateProjectsToGlobal() {
     }
 }
 
-// Cache para histórico de todos os utilizadores
-let _allUsersHistoryCache = null;
-
 function getAllUsersHistory() {
-    // Retornar cache se disponível
-    if (_allUsersHistoryCache) {
-        return _allUsersHistoryCache;
-    }
+    const users = getUsers();
+    let allHistory = [];
     
-    // Carregar assincronamente
-    loadAllUsersHistoryAsync();
-    return _allUsersHistoryCache || [];
-}
-
-async function loadAllUsersHistoryAsync() {
-    try {
-        if (typeof apiRequest === 'function') {
-            const sessions = await apiRequest('/sessions');
-            _allUsersHistoryCache = sessions.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+    users.forEach(user => {
+        const key = `workHistory_${user.username}`;
+        const history = localStorage.getItem(key);
+        if (history) {
+            const userHistory = JSON.parse(history);
+            allHistory = allHistory.concat(userHistory);
         }
-    } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
-        _allUsersHistoryCache = [];
-    }
+    });
+    
+    return allHistory.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 }
 
 function getAllUsersProjects() {
-    return getProjects();
+    const projects = localStorage.getItem('projects_global');
+    return projects ? JSON.parse(projects) : [];
 }
 
 function loadUsersList() {
@@ -150,7 +141,7 @@ function promoteToAdmin(username) {
         }
     });
 }
-
+      
 function demoteFromAdmin(username) {
     if (!isUserAdmin()) {
         showAlert('Erro', 'Apenas administradores podem remover privilégios.');
@@ -942,9 +933,15 @@ function loadAdminUsersList() {
         let actionsHtml = '';
         if (!isSelf) {
             if (user.isAdmin) {
-                actionsHtml = `<button class="btn btn-secondary btn-small" onclick="demoteFromAdmin('${user.username}')">⬇️ Remover Admin</button>`;
+                actionsHtml = `
+                    <button class="btn btn-secondary btn-small" onclick="demoteFromAdmin('${user.username}')">⬇️ Remover Admin</button>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteUser('${user.username}')">🗑️ Eliminar</button>
+                `;
             } else {
-                actionsHtml = `<button class="btn btn-admin btn-small" onclick="promoteToAdmin('${user.username}')">⬆️ Promover a Admin</button>`;
+                actionsHtml = `
+                    <button class="btn btn-admin btn-small" onclick="promoteToAdmin('${user.username}')">⬆️ Promover a Admin</button>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteUser('${user.username}')">🗑️ Eliminar</button>
+                `;
             }
         } else {
             actionsHtml = '<span style="font-size: 12px; color: #95a5a6; font-style: italic;">Você</span>';
@@ -979,6 +976,52 @@ function loadAdminUsersList() {
             </div>
         `;
     }).join('');
+}
+
+// Confirmar eliminação de utilizador
+function confirmDeleteUser(username) {
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    if (!user) return;
+    
+    const fullName = `${user.firstName} ${user.lastName}`;
+    
+    showConfirm(
+        '⚠️ Eliminar Utilizador',
+        `Tem certeza que deseja eliminar a conta de "${fullName}" (${username})?\n\nTodo o histórico de trabalho deste utilizador será mantido, mas a conta será removida.`,
+        function() {
+            deleteUser(username);
+        }
+    );
+}
+
+// Eliminar utilizador
+function deleteUser(username) {
+    const users = getUsers();
+    const userIndex = users.findIndex(u => u.username === username);
+    
+    if (userIndex === -1) {
+        showAlert('Erro', 'Utilizador não encontrado.');
+        return;
+    }
+    
+    const user = users[userIndex];
+    
+    // Não permitir eliminar a própria conta
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (currentUser.username === username) {
+        showAlert('Erro', 'Não pode eliminar a sua própria conta.');
+        return;
+    }
+    
+    // Remover utilizador
+    users.splice(userIndex, 1);
+    saveUsers(users);
+    
+    // Atualizar lista
+    loadAdminUsersList();
+    
+    showAlert('Sucesso', `A conta de ${user.firstName} ${user.lastName} foi eliminada.`);
 }
 
 let adminCalendarYear = new Date().getFullYear();
