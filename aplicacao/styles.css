@@ -5341,6 +5341,21 @@ input:focus, select:focus, textarea:focus {
     margin-top: 15px;
 }
 
+.chart-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.chart-container canvas {
+    max-width: 100%;
+    height: auto;
+}
+
 .weekly-chart {
     display: flex;
     justify-content: space-around;

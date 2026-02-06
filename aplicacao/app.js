@@ -3257,6 +3257,9 @@ function updateMonthStats() {
     
     // Atualizar gráfico semanal
     updateWeeklyChart();
+    
+    // Atualizar gráficos circulares
+    updatePieCharts();
 }
 
 // Gráfico de barras das últimas 4 semanas
@@ -3314,6 +3317,173 @@ function updateWeeklyChart() {
             </div>
         `;
     }).join('');
+}
+
+// ==================== GRÁFICOS CIRCULARES (DONUT CHARTS) ====================
+
+function drawDonutChart(canvasId, projectHours, internalHours) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 80;
+    const innerRadius = 50;
+    
+    const total = projectHours + internalHours;
+    
+    // Limpar canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (total === 0) {
+        // Mostrar círculo cinzento se não houver dados
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#e9ecef';
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        
+        // Texto "Sem dados"
+        ctx.fillStyle = '#95a5a6';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sem dados', centerX, centerY);
+        return;
+    }
+    
+    const projectAngle = (projectHours / total) * 2 * Math.PI;
+    const internalAngle = (internalHours / total) * 2 * Math.PI;
+    
+    // Desenhar fatia de Projeto (azul/roxo)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + projectAngle);
+    ctx.arc(centerX, centerY, innerRadius, -Math.PI / 2 + projectAngle, -Math.PI / 2, true);
+    ctx.closePath();
+    const gradientProject = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradientProject.addColorStop(0, '#667eea');
+    gradientProject.addColorStop(1, '#764ba2');
+    ctx.fillStyle = gradientProject;
+    ctx.fill();
+    
+    // Desenhar fatia de Interno (rosa/vermelho)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, -Math.PI / 2 + projectAngle, -Math.PI / 2 + projectAngle + internalAngle);
+    ctx.arc(centerX, centerY, innerRadius, -Math.PI / 2 + projectAngle + internalAngle, -Math.PI / 2 + projectAngle, true);
+    ctx.closePath();
+    const gradientInternal = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradientInternal.addColorStop(0, '#ff7675');
+    gradientInternal.addColorStop(1, '#fd79a8');
+    ctx.fillStyle = gradientInternal;
+    ctx.fill();
+    
+    // Centro branco
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    
+    // Percentagens
+    const projectPercent = Math.round((projectHours / total) * 100);
+    const internalPercent = Math.round((internalHours / total) * 100);
+    
+    // Mostrar AMBAS as percentagens
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Percentagem de Projeto (azul)
+    ctx.fillStyle = '#667eea';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(projectPercent + '%', centerX, centerY - 12);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillText('Projeto', centerX, centerY - 0);
+    
+    // Percentagem de Interno (rosa)
+    ctx.fillStyle = '#ff7675';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(internalPercent + '%', centerX, centerY + 12);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillText('Interno', centerX, centerY + 24);
+}
+
+function updatePieCharts() {
+    const history = getWorkHistory();
+    const now = new Date();
+    
+    // Calcular Hoje
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    
+    const todayHistory = history.filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= todayStart && sessionDate < todayEnd;
+    });
+    
+    let todayProject = todayHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+    let todayInternal = todayHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    
+    // Adicionar timer ativo se estiver a correr
+    if (timerInterval && timerSeconds) {
+        const workType = document.querySelector('input[name="workType"]:checked')?.value;
+        if (workType === 'project') {
+            todayProject += timerSeconds;
+        } else if (workType === 'internal') {
+            todayInternal += timerSeconds;
+        }
+    }
+    
+    // Calcular Esta Semana
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    const weekHistory = history.filter(session => {
+        const sessionDate = new Date(session.startTime);
+        return sessionDate >= weekStart && sessionDate < weekEnd;
+    });
+    
+    let weekProject = weekHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+    let weekInternal = weekHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    
+    // Adicionar timer ativo se estiver a correr
+    if (timerInterval && timerSeconds) {
+        const workType = document.querySelector('input[name="workType"]:checked')?.value;
+        if (workType === 'project') {
+            weekProject += timerSeconds;
+        } else if (workType === 'internal') {
+            weekInternal += timerSeconds;
+        }
+    }
+    
+    // Calcular Este Mês
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthHistory = history.filter(h => new Date(h.startTime) >= startOfMonth);
+    
+    let monthProject = monthHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+    let monthInternal = monthHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    
+    // Adicionar timer ativo
+    if (timerInterval && timerSeconds) {
+        const workType = document.querySelector('input[name="workType"]:checked')?.value;
+        if (workType === 'project') {
+            monthProject += timerSeconds;
+        } else if (workType === 'internal') {
+            monthInternal += timerSeconds;
+        }
+    }
+    
+    // Desenhar gráficos
+    drawDonutChart('todayPieChart', todayProject, todayInternal);
+    drawDonutChart('weekPieChart', weekProject, weekInternal);
+    drawDonutChart('monthPieChart', monthProject, monthInternal);
 }
 
 // Favoritos de obras
@@ -3428,6 +3598,7 @@ showApp = function() {
 // Atualizar meta diária quando o timer muda
 const originalUpdateTimerDisplay = updateTimerDisplay;
 let monthStatsUpdateCounter = 0;
+let pieChartUpdateCounter = 0;
 if (typeof updateTimerDisplay === 'function') {
     updateTimerDisplay = function() {
         originalUpdateTimerDisplay();
@@ -3438,6 +3609,13 @@ if (typeof updateTimerDisplay === 'function') {
         if (monthStatsUpdateCounter >= 10) {
             updateMonthStats();
             monthStatsUpdateCounter = 0;
+        }
+        
+        // Atualizar gráficos circulares a cada 5 segundos
+        pieChartUpdateCounter++;
+        if (pieChartUpdateCounter >= 5) {
+            updatePieCharts();
+            pieChartUpdateCounter = 0;
         }
     };
 }
