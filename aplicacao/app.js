@@ -8,6 +8,7 @@ let inactivityTimer = null;
 let lastActivityTime = Date.now();
 let timerPaused = false;
 let pausedSeconds = 0;
+let windowIsVisible = true; // Rastrear se janela está visível
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
 
 const subcategories = {
@@ -775,6 +776,15 @@ function resumeActiveTimer() {
 
 function resetActivityTimer() { lastActivityTime = Date.now(); }
 
+// Recalcular timer baseado no tempo real (não em incrementos)
+function recalculateTimerFromStartTime() {
+    if (!timerInterval || !startTime) return;
+    
+    const now = new Date();
+    timerSeconds = Math.floor((now - startTime) / 1000);
+    updateTimerDisplay();
+}
+
 function startInactivityMonitor() {
     lastActivityTime = Date.now();
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
@@ -792,6 +802,11 @@ function stopInactivityMonitor() {
 }
 
 function checkInactivity() {
+    // NÃO detetar inatividade se a janela estiver minimizada/escondida
+    if (!windowIsVisible) {
+        return;
+    }
+    
     const now = Date.now();
     const timeSinceLastActivity = now - lastActivityTime;
     if (timeSinceLastActivity >= INACTIVITY_TIMEOUT && !timerPaused && timerInterval) {
@@ -3217,9 +3232,20 @@ function updateMonthStats() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
     const monthHistory = history.filter(h => new Date(h.startTime) >= startOfMonth);
-    const monthTotal = monthHistory.reduce((sum, h) => sum + h.duration, 0);
-    const monthProject = monthHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
-    const monthInternal = monthHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    let monthTotal = monthHistory.reduce((sum, h) => sum + h.duration, 0);
+    let monthProject = monthHistory.filter(h => h.workType === 'project').reduce((sum, h) => sum + h.duration, 0);
+    let monthInternal = monthHistory.filter(h => h.workType === 'internal').reduce((sum, h) => sum + h.duration, 0);
+    
+    // INCLUIR TIMER ATIVO se estiver a correr
+    if (timerInterval && timerSeconds) {
+        monthTotal += timerSeconds;
+        const workType = document.querySelector('input[name="workType"]:checked')?.value;
+        if (workType === 'project') {
+            monthProject += timerSeconds;
+        } else if (workType === 'internal') {
+            monthInternal += timerSeconds;
+        }
+    }
     
     const totalEl = document.getElementById('monthTotalHours');
     const projectEl = document.getElementById('monthProjectHours');
@@ -3401,10 +3427,18 @@ showApp = function() {
 
 // Atualizar meta diária quando o timer muda
 const originalUpdateTimerDisplay = updateTimerDisplay;
+let monthStatsUpdateCounter = 0;
 if (typeof updateTimerDisplay === 'function') {
     updateTimerDisplay = function() {
         originalUpdateTimerDisplay();
         updateDailyGoalProgress();
+        
+        // Atualizar stats mensais a cada 10 segundos (não em cada segundo)
+        monthStatsUpdateCounter++;
+        if (monthStatsUpdateCounter >= 10) {
+            updateMonthStats();
+            monthStatsUpdateCounter = 0;
+        }
     };
 }
 
@@ -3502,3 +3536,131 @@ function showToastNotification(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 2500);
 }
+
+// ==================== SINCRONIZAR FOTO DE PERFIL COM CABEÇALHO ====================
+
+function updateHeaderPhoto() {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) return;
+    
+    const photoData = localStorage.getItem(`profilePhoto_${user.username}`);
+    const headerPhoto = document.getElementById('headerUserPhoto');
+    const headerPhotoImg = document.getElementById('headerPhotoImg');
+    const headerPhotoPlaceholder = document.getElementById('headerPhotoPlaceholder');
+    const headerPhotoInitials = document.getElementById('headerPhotoInitials');
+    
+    if (!headerPhoto) return;
+    
+    // Mostrar container (remover hidden e adicionar active)
+    headerPhoto.classList.remove('hidden');
+    headerPhoto.classList.add('active');
+    
+    if (photoData && headerPhotoImg) {
+        // Tem foto
+        headerPhotoImg.src = photoData;
+        headerPhotoImg.classList.add('active');
+        if (headerPhotoPlaceholder) headerPhotoPlaceholder.classList.add('hidden');
+    } else {
+        // Sem foto - mostrar iniciais
+        if (headerPhotoImg) headerPhotoImg.classList.remove('active');
+        if (headerPhotoPlaceholder) headerPhotoPlaceholder.classList.remove('hidden');
+        
+        const firstName = user.firstName || '';
+        const lastName = user.lastName || '';
+        const initial1 = firstName.charAt(0) || '';
+        const initial2 = lastName.charAt(0) || '';
+        
+        if (headerPhotoInitials) {
+            headerPhotoInitials.textContent = (initial1 + initial2).toUpperCase() || '?';
+        }
+    }
+}
+
+function hideHeaderPhoto() {
+    const headerPhoto = document.getElementById('headerUserPhoto');
+    if (headerPhoto) {
+        headerPhoto.classList.remove('active');
+        headerPhoto.classList.add('hidden');
+    }
+}
+
+// Interceptar loadProfilePhoto original para atualizar também o cabeçalho
+const _originalLoadProfilePhoto = loadProfilePhoto;
+loadProfilePhoto = function() {
+    _originalLoadProfilePhoto();
+    updateHeaderPhoto();
+};
+
+// Interceptar handleProfilePhotoChange para atualizar cabeçalho
+const _originalHandleProfilePhotoChange = handleProfilePhotoChange;
+handleProfilePhotoChange = function(event) {
+    _originalHandleProfilePhotoChange(event);
+    setTimeout(() => updateHeaderPhoto(), 100);
+};
+
+// Interceptar removeProfilePhoto para atualizar cabeçalho
+const _originalRemoveProfilePhoto = removeProfilePhoto;
+removeProfilePhoto = function() {
+    _originalRemoveProfilePhoto();
+    setTimeout(() => updateHeaderPhoto(), 100);
+};
+
+// Atualizar no showApp
+// Alias para compatibilidade
+window.setupAdminUI = setupAdminUIEnhanced;
+
+// Override showApp para atualizar foto no cabeçalho
+const _originalShowApp3 = showApp;
+showApp = function() {
+    _originalShowApp3();
+    setTimeout(() => updateHeaderPhoto(), 100);
+};
+
+// Esconder no showLogin
+const _originalShowLogin3 = showLogin;
+showLogin = function() {
+    _originalShowLogin3();
+    hideHeaderPhoto();
+};
+
+// Inicializar ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+        setTimeout(() => updateHeaderPhoto(), 200);
+    }
+});
+
+// ==================== DETEÇÃO DE VISIBILIDADE DA JANELA ====================
+// Resolver bug: não detetar inatividade quando janela está minimizada
+
+// Detetar quando janela fica escondida (minimizada, outra aba, etc.)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        // Janela escondida - utilizador pode estar a trabalhar noutro lado
+        windowIsVisible = false;
+        console.log('🔵 Janela minimizada - deteção de inatividade PAUSADA');
+    } else {
+        // Janela voltou a estar visível
+        windowIsVisible = true;
+        // Resetar timer de atividade para não acusar imediatamente
+        lastActivityTime = Date.now();
+        // Recalcular timer para mostrar tempo correto
+        recalculateTimerFromStartTime();
+        console.log('🟢 Janela ativa - deteção de inatividade RETOMADA + Timer atualizado');
+    }
+});
+
+// Fallback para browsers mais antigos (focus/blur)
+window.addEventListener('blur', function() {
+    windowIsVisible = false;
+    console.log('🔵 Janela perdeu foco - deteção de inatividade PAUSADA');
+});
+
+window.addEventListener('focus', function() {
+    windowIsVisible = true;
+    lastActivityTime = Date.now();
+    // Recalcular timer também no focus
+    recalculateTimerFromStartTime();
+    console.log('🟢 Janela ganhou foco - deteção de inatividade RETOMADA + Timer atualizado');
+});

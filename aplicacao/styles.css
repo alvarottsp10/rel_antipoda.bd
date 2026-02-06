@@ -76,9 +76,15 @@ body {
 
     color: white;
 
-    padding: 30px;
+    padding: 20px 30px;
 
-    text-align: center;
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
 
 }
 
@@ -87,6 +93,54 @@ body {
 .header.admin {
 
     background: var(--admin-color);
+
+}
+
+
+
+/* Logo Antípoda (esquerda) */
+
+.header-logo {
+
+    flex: 0 0 auto;
+
+    display: flex;
+
+    align-items: center;
+
+}
+
+
+
+.company-logo-fixed {
+
+    height: 70px;
+
+    width: auto;
+
+    max-width: 150px;
+
+    object-fit: contain;
+
+    background: white;
+
+    padding: 5px;
+
+    border-radius: 8px;
+
+}
+
+
+
+/* Título (centro) */
+
+.header-title {
+
+    flex: 1;
+
+    text-align: center;
+
+    min-width: 0;
 
 }
 
@@ -107,6 +161,232 @@ body {
     font-size: 14px;
 
     opacity: 0.9;
+
+}
+
+
+
+/* Foto de Perfil (direita) */
+
+.header-user-photo {
+
+    flex: 0 0 auto;
+
+    display: none;
+
+    position: relative;
+
+    width: 60px;
+
+    height: 60px;
+
+}
+
+
+
+.header-user-photo.active {
+
+    display: block;
+
+}
+
+
+
+.header-photo {
+
+    width: 60px;
+
+    height: 60px;
+
+    border-radius: 50%;
+
+    object-fit: cover;
+
+    border: 3px solid rgba(255, 255, 255, 0.3);
+
+    display: none;
+
+    background: white;
+
+}
+
+
+
+.header-photo.active {
+
+    display: block;
+
+}
+
+
+
+.header-photo-placeholder {
+
+    width: 60px;
+
+    height: 60px;
+
+    border-radius: 50%;
+
+    background: rgba(255, 255, 255, 0.2);
+
+    border: 3px solid rgba(255, 255, 255, 0.3);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 24px;
+
+    font-weight: 600;
+
+    color: white;
+
+}
+
+
+
+.header-photo-placeholder.hidden {
+
+    display: none;
+
+}
+
+
+
+/* Responsivo */
+
+@media (max-width: 768px) {
+
+    .header {
+
+        padding: 15px 20px;
+
+        gap: 15px;
+
+    }
+
+    
+
+    .company-logo-fixed {
+
+        height: 55px;
+
+        max-width: 120px;
+
+    }
+
+    
+
+    .header h1 {
+
+        font-size: 20px;
+
+    }
+
+    
+
+    .header p {
+
+        font-size: 12px;
+
+    }
+
+    
+
+    .header-user-photo {
+
+        width: 50px;
+
+        height: 50px;
+
+    }
+
+    
+
+    .header-photo,
+
+    .header-photo-placeholder {
+
+        width: 50px;
+
+        height: 50px;
+
+        border-width: 2px;
+
+        font-size: 20px;
+
+    }
+
+}
+
+
+
+@media (max-width: 480px) {
+
+    .header {
+
+        flex-wrap: wrap;
+
+        justify-content: center;
+
+        padding: 15px;
+
+    }
+
+    
+
+    .header-logo {
+
+        order: 1;
+
+        flex: 0 0 100%;
+
+        justify-content: center;
+
+        margin-bottom: 10px;
+
+    }
+
+    
+
+    .header-title {
+
+        order: 2;
+
+        flex: 0 0 100%;
+
+    }
+
+    
+
+    .header-user-photo {
+
+        order: 3;
+
+        margin: 10px auto 0;
+
+    }
+
+    
+
+    .company-logo-fixed {
+
+        height: 50px;
+
+        max-width: 100px;
+
+    }
+
+    
+
+    .header h1 {
+
+        font-size: 18px;
+
+    }
 
 }
 
